@@ -180,10 +180,14 @@
         
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
+        
+        /* FIXED DATE INPUT EXPANSION */
         .form-group input, .form-group select {
-            width: 100%; padding: 12px 15px; border: 1px solid #334155;
+            width: 100%; max-width: 100%; box-sizing: border-box; height: 48px; 
+            padding: 12px 15px; border: 1px solid #334155;
             border-radius: 8px; font-family: 'Montserrat', sans-serif; font-size: 0.9rem;
             background: var(--bg-main); color: var(--text-main); transition: 0.3s;
+            -webkit-appearance: none; appearance: none; /* Stops iOS from overriding styles */
         }
         .form-group input:focus, .form-group select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(212,175,55,0.2); }
         .form-group select option { background: var(--bg-sec); color: var(--text-main); }
@@ -216,7 +220,6 @@
         @media (max-width: 992px) {
             .experience { flex-direction: column; }
             .hero h1 { font-size: 3.5rem; }
-            /* Tablets: Center the stats bar, keep rounded corners */
             .stats-bar { left: 5%; right: 5%; width: 90%; border-radius: 20px; }
         }
 
@@ -230,11 +233,10 @@
             .nav-links a { color: var(--text-main) !important; font-size: 1.5rem; }
             .hamburger { display: block; }
             
-            /* Change Hero layout to stack nicely on phones */
             .hero {
                 height: auto;
                 min-height: 100vh;
-                padding-top: 130px; /* Space for navbar */
+                padding-top: 130px; 
                 padding-bottom: 60px;
                 flex-direction: column;
                 justify-content: center;
@@ -244,24 +246,23 @@
             .hero-cta { flex-direction: column; width: 100%; }
             .btn-primary, .btn-secondary { width: 100%; text-align: center; }
             
-            /* MOBILE STATS BAR: Beautiful floating rounded card below buttons */
             .stats-bar { 
                 position: relative; 
                 width: 100%; 
                 bottom: auto; 
                 right: auto;
                 left: auto;
-                margin-top: 50px; /* Adds space between buttons and card */
+                margin-top: 50px; 
                 border-radius: 20px; 
                 flex-direction: column; 
                 gap: 30px; 
                 padding: 40px 30px; 
-                background: rgba(30, 41, 59, 0.8); /* Darker solid glass for contrast */
+                background: rgba(30, 41, 59, 0.8); 
                 border: 1px solid var(--glass-border);
             }
             
             .section-title { font-size: 2.2rem; }
-            .services { padding-top: 80px; } /* Reset padding since stats bar isn't overlapping anymore */
+            .services { padding-top: 80px; } 
             
             .service-grid { grid-template-columns: 1fr; }
             .gallery-grid { grid-template-columns: 1fr; }
@@ -465,7 +466,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 Dabah Dental Studio. All rights reserved. Designed for Excellence.</p>
+            <p>&copy; 2026 Dabah Dental Studio. All rights reserved. Designed by Ahmed Eldabah.</p>
         </div>
     </footer>
 
@@ -474,7 +475,7 @@
             <i class="fas fa-times close-modal" onclick="closeModal()"></i>
             <div class="modal-header">
                 <h3>Book Your Visit</h3>
-                <p>Fill out the details below to request an appointment via WhatsApp.</p>
+                <p>Fill out the details below to securely request an appointment.</p>
             </div>
             
             <div class="form-group">
@@ -501,8 +502,8 @@
                 <input type="date" id="pat-date">
             </div>
             
-            <button type="button" class="btn-submit" onclick="sendWhatsApp()">
-                <i class="fab fa-whatsapp" style="font-size: 1.2rem;"></i> Continue to WhatsApp
+            <button type="button" class="btn-submit" onclick="submitBooking()">
+                <i class="fab fa-whatsapp" style="font-size: 1.2rem;"></i> Submit & Open WhatsApp
             </button>
         </div>
     </div>
@@ -563,7 +564,7 @@
 
         revealElements.forEach(el => revealOnScroll.observe(el));
 
-        // 5. BULLETPROOF WHATSAPP ROUTING
+        // 5. MODAL & DUAL-SEND LOGIC (EMAIL + WHATSAPP)
         const modal = document.getElementById('bookingModal');
 
         function openModal() {
@@ -581,7 +582,7 @@
             if (e.target === modal) closeModal();
         });
 
-        function sendWhatsApp() {
+        function submitBooking() {
             const nameInput = document.getElementById('pat-name');
             const serviceInput = document.getElementById('pat-service');
             const dateInput = document.getElementById('pat-date');
@@ -590,6 +591,7 @@
             const service = serviceInput.value;
             const date = dateInput.value;
 
+            // Form Validation
             if (!name) {
                 alert("Please enter your Full Name.");
                 nameInput.focus();
@@ -601,8 +603,24 @@
                 return;
             }
 
+            // --- PART 1: SEND BACKGROUND EMAIL VIA FORMSPREE ---
+            // Create the data payload
+            const formData = new FormData();
+            formData.append("Patient Name", name);
+            formData.append("Service Requested", service);
+            formData.append("Preferred Date", date ? date : 'Flexible');
+
+            // IMPORTANT: Replace 'YOUR_FORMSPREE_ID' with your actual endpoint ID
+            fetch("https://formspree.io/f/mgopajkd", {
+                method: "POST",
+                body: formData,
+                headers: { 'Accept': 'application/json' }
+            }).catch(error => console.error("Email API Error:", error));
+            // We do not 'await' this fetch. We let it run quietly in the background so it doesn't slow down the WhatsApp popup.
+
+
+            // --- PART 2: OPEN WHATSAPP ---
             const phone = "201557650318";
-            
             const rawMessage = `Hello Dabah Dental Studio! 🦷\n\nMy name is *${name}*.\nI would like to book an appointment for: *${service}*.\n\nPreferred Date: ${date ? date : 'Flexible'}\n\nPlease let me know your availability.`;
             const encodedMessage = encodeURIComponent(rawMessage);
 
@@ -622,6 +640,7 @@
             link.click();
             document.body.removeChild(link);
             
+            // Clear fields and close
             nameInput.value = '';
             serviceInput.value = '';
             dateInput.value = '';
