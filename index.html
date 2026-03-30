@@ -181,16 +181,24 @@
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
         
-        /* FIXED DATE INPUT EXPANSION */
+        /* OPTIMIZED INPUTS */
         .form-group input, .form-group select {
             width: 100%; max-width: 100%; box-sizing: border-box; height: 48px; 
             padding: 12px 15px; border: 1px solid #334155;
             border-radius: 8px; font-family: 'Montserrat', sans-serif; font-size: 0.9rem;
             background: var(--bg-main); color: var(--text-main); transition: 0.3s;
-            -webkit-appearance: none; appearance: none; /* Stops iOS from overriding styles */
+            -webkit-appearance: none; appearance: none;
         }
         .form-group input:focus, .form-group select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(212,175,55,0.2); }
         .form-group select option { background: var(--bg-sec); color: var(--text-main); }
+        
+        /* FLEXBOX FOR DATE & TIME */
+        .date-time-group {
+            display: flex; gap: 15px; margin-bottom: 20px; width: 100%; box-sizing: border-box;
+        }
+        .date-time-group .form-group {
+            margin-bottom: 0; flex: 1; min-width: 0;
+        }
         
         .btn-submit {
             width: 100%; background: var(--whatsapp); color: white; border: none;
@@ -270,6 +278,9 @@
             
             .modal-content { padding: 30px 20px; margin-top: 20px; }
             .modal-header h3 { font-size: 1.5rem; }
+            
+            /* Stack date/time on very small phones */
+            .date-time-group { flex-direction: column; gap: 20px; }
         }
     </style>
 </head>
@@ -482,6 +493,11 @@
                 <label for="pat-name">Full Name</label>
                 <input type="text" id="pat-name" placeholder="E.g., Ahmed Eldabah">
             </div>
+
+            <div class="form-group">
+                <label for="pat-phone">Phone Number</label>
+                <input type="tel" id="pat-phone" placeholder="E.g., 010xxxxxxxx">
+            </div>
             
             <div class="form-group">
                 <label for="pat-service">Service Needed</label>
@@ -497,9 +513,20 @@
                 </select>
             </div>
             
-            <div class="form-group">
-                <label for="pat-date">Preferred Date (Optional)</label>
-                <input type="date" id="pat-date">
+            <div class="date-time-group">
+                <div class="form-group">
+                    <label for="pat-date">Preferred Date</label>
+                    <input type="date" id="pat-date">
+                </div>
+                <div class="form-group">
+                    <label for="pat-time">Time Slot</label>
+                    <select id="pat-time">
+                        <option value="" disabled selected>Select time...</option>
+                        <option value="Morning (10 AM - 2 PM)">Morning (10 AM - 2 PM)</option>
+                        <option value="Afternoon (2 PM - 6 PM)">Afternoon (2 PM - 6 PM)</option>
+                        <option value="Evening (6 PM - 10 PM)">Evening (6 PM - 10 PM)</option>
+                    </select>
+                </div>
             </div>
             
             <button type="button" class="btn-submit" onclick="submitBooking()">
@@ -584,17 +611,26 @@
 
         function submitBooking() {
             const nameInput = document.getElementById('pat-name');
+            const phoneInput = document.getElementById('pat-phone'); // New
             const serviceInput = document.getElementById('pat-service');
             const dateInput = document.getElementById('pat-date');
+            const timeInput = document.getElementById('pat-time'); // New
             
             const name = nameInput.value.trim();
+            const phoneVal = phoneInput.value.trim(); // New
             const service = serviceInput.value;
             const date = dateInput.value;
+            const timeVal = timeInput.value; // New
 
             // Form Validation
             if (!name) {
                 alert("Please enter your Full Name.");
                 nameInput.focus();
+                return;
+            }
+            if (!phoneVal) {
+                alert("Please enter your Phone Number.");
+                phoneInput.focus();
                 return;
             }
             if (!service) {
@@ -604,33 +640,33 @@
             }
 
             // --- PART 1: SEND BACKGROUND EMAIL VIA FORMSPREE ---
-            // Create the data payload
             const formData = new FormData();
             formData.append("Patient Name", name);
+            formData.append("Patient Phone", phoneVal);
             formData.append("Service Requested", service);
             formData.append("Preferred Date", date ? date : 'Flexible');
+            formData.append("Preferred Time", timeVal ? timeVal : 'Flexible');
 
-            // IMPORTANT: Replace 'YOUR_FORMSPREE_ID' with your actual endpoint ID
+            // Replace with your actual Formspree ID
             fetch("https://formspree.io/f/mgopajkd", {
                 method: "POST",
                 body: formData,
                 headers: { 'Accept': 'application/json' }
             }).catch(error => console.error("Email API Error:", error));
-            // We do not 'await' this fetch. We let it run quietly in the background so it doesn't slow down the WhatsApp popup.
 
 
             // --- PART 2: OPEN WHATSAPP ---
-            const phone = "201557650318";
-            const rawMessage = `Hello Dabah Dental Studio! 🦷\n\nMy name is *${name}*.\nI would like to book an appointment for: *${service}*.\n\nPreferred Date: ${date ? date : 'Flexible'}\n\nPlease let me know your availability.`;
+            const clinicPhone = "201557650318";
+            const rawMessage = `Hello Dabah Dental Studio! 🦷\n\nMy name is *${name}*.\nPhone: ${phoneVal}\nI would like to book an appointment for: *${service}*.\n\nPreferred Date: ${date ? date : 'Flexible'}\nPreferred Time: ${timeVal ? timeVal : 'Flexible'}\n\nPlease let me know your availability.`;
             const encodedMessage = encodeURIComponent(rawMessage);
 
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             let waUrl = "";
 
             if (isMobile) {
-                waUrl = `whatsapp://send?phone=${phone}&text=${encodedMessage}`;
+                waUrl = `whatsapp://send?phone=${clinicPhone}&text=${encodedMessage}`;
             } else {
-                waUrl = `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
+                waUrl = `https://web.whatsapp.com/send?phone=${clinicPhone}&text=${encodedMessage}`;
             }
 
             const link = document.createElement('a');
@@ -642,8 +678,10 @@
             
             // Clear fields and close
             nameInput.value = '';
+            phoneInput.value = '';
             serviceInput.value = '';
             dateInput.value = '';
+            timeInput.value = '';
             closeModal();
         }
     </script>
